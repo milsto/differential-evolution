@@ -30,6 +30,26 @@ namespace de
             {
 
             }
+
+            bool Check(double candidate)
+            {
+                if (isConstrained)
+                {
+                    if (candidate <= upper && candidate >= lower)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return true;
+                }
+            }
+
             double lower;
             double upper;
             bool isConstrained;
@@ -44,13 +64,27 @@ namespace de
     class DifferentialEvolution
     {
     public:
-        DifferentialEvolution(const IOptimizable& costFunction, unsigned int populationSize, int randomSeed = 123) :
+        /**
+         * Construct Differential Evolution optimizer
+         *
+         * \param costFunction Cost function to minimize
+         * \param populationSize Number of agents in each optimization step
+         * \param randomSeed Set random seed to a fix value to have repeatable (non stochastic) experiments
+         * \param shouldCheckConstraints Should constraints bee checked on for each new candidate.
+         * This check check may be turned off to increase performance if the cost function is defined
+         * and has no local minimum outside of the constraints.
+         */
+        DifferentialEvolution(  const IOptimizable& costFunction,
+                                unsigned int populationSize,
+                                int randomSeed = 123,
+                                bool shouldCheckConstraints = true) :
             m_cost(costFunction),
             m_populationSize(populationSize),
             m_F(0.8),
             m_CR(0.9),
             m_bestAgentIndex(0),
-            m_minCost(-std::numeric_limits<double>::infinity())
+            m_minCost(-std::numeric_limits<double>::infinity()),
+            m_shouldCheckConstraints(shouldCheckConstraints)
         {
             m_generator.seed(randomSeed);
             assert(m_populationSize >= 4);
@@ -159,6 +193,12 @@ namespace de
                     }
                 }
 
+                // Check if newX candidate satisfies constraints and skip it if not.
+                if (m_shouldCheckConstraints && !CheckConstraints(newX))
+                {
+                    continue;
+                }
+
                 // Calculate new cost and decide should the newX be kept.
                 double newCost = m_cost.EvaluteCost(newX);
                 if (newCost < m_minCostPerAgent[x])
@@ -226,12 +266,27 @@ namespace de
         }
 
     private:
+        bool CheckConstraints(std::vector<double> agent)
+        {
+            for (int i = 0; i < agent.size(); i++)
+            {
+                if (!m_constraints[i].Check(agent[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         const IOptimizable& m_cost;
         unsigned int m_populationSize;
         double m_F;
         double m_CR;
 
         unsigned int m_numberOfParameters;
+
+        bool m_shouldCheckConstraints;
 
         std::default_random_engine m_generator;
         std::vector<std::vector<double>> m_population;
