@@ -73,18 +73,22 @@ namespace de
          * \param shouldCheckConstraints Should constraints bee checked on for each new candidate.
          * This check check may be turned off to increase performance if the cost function is defined
          * and has no local minimum outside of the constraints.
+         * \param callback Optional callback to be called after each optimization iteration has finished.
+         * Optimization iteration is defined as processing of single population with SelectionAndCorssing method.
          */
         DifferentialEvolution(  const IOptimizable& costFunction,
                                 unsigned int populationSize,
                                 int randomSeed = 123,
-                                bool shouldCheckConstraints = true) :
+                                bool shouldCheckConstraints = true,
+                                std::function<void(const DifferentialEvolution&)> callback = nullptr) :
             m_cost(costFunction),
             m_populationSize(populationSize),
             m_F(0.8),
             m_CR(0.9),
             m_bestAgentIndex(0),
             m_minCost(-std::numeric_limits<double>::infinity()),
-            m_shouldCheckConstraints(shouldCheckConstraints)
+            m_shouldCheckConstraints(shouldCheckConstraints),
+            m_callback(callback)
         {
             m_generator.seed(randomSeed);
             assert(m_populationSize >= 4);
@@ -229,7 +233,7 @@ namespace de
             return m_minCostPerAgent[m_bestAgentIndex];
         }
 
-        void PrintPopulation()
+        void PrintPopulation() const
         {
             for (auto agent : m_population)
             {
@@ -262,6 +266,11 @@ namespace de
                     }
                     std::cout << std::endl;
                 }
+
+                if (m_callback)
+                {
+                    m_callback(*this);
+                }
             }
         }
 
@@ -287,6 +296,8 @@ namespace de
         unsigned int m_numberOfParameters;
 
         bool m_shouldCheckConstraints;
+
+        std::function<void(const DifferentialEvolution&)> m_callback;
 
         std::default_random_engine m_generator;
         std::vector<std::vector<double>> m_population;
