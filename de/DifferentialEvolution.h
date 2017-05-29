@@ -198,8 +198,11 @@ namespace de
                 }
 
                 // Check if newX candidate satisfies constraints and skip it if not.
+                // If agent is skipped loop iteration x is decreased so that it is ensured
+                // that the population has constant size (equal to m_populationSize).
                 if (m_shouldCheckConstraints && !CheckConstraints(newX))
                 {
+                    x--;
                     continue;
                 }
 
