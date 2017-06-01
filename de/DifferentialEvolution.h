@@ -80,7 +80,8 @@ namespace de
                                 unsigned int populationSize,
                                 int randomSeed = 123,
                                 bool shouldCheckConstraints = true,
-                                std::function<void(const DifferentialEvolution&)> callback = nullptr) :
+                                std::function<void(const DifferentialEvolution&)> callback = nullptr,
+                                std::function<bool(const DifferentialEvolution&)> terminationCondition = nullptr) :
             m_cost(costFunction),
             m_populationSize(populationSize),
             m_F(0.8),
@@ -88,7 +89,8 @@ namespace de
             m_bestAgentIndex(0),
             m_minCost(-std::numeric_limits<double>::infinity()),
             m_shouldCheckConstraints(shouldCheckConstraints),
-            m_callback(callback)
+            m_callback(callback),
+            m_terminationCondition(terminationCondition)
         {
             m_generator.seed(randomSeed);
             assert(m_populationSize >= 4);
@@ -236,6 +238,17 @@ namespace de
             return m_minCostPerAgent[m_bestAgentIndex];
         }
 
+        std::vector<std::pair<std::vector<double>, double>> GetPopulationWithCosts() const
+        {
+            std::vector<std::pair<std::vector<double>, double>> toRet;
+            for (int i = 0; i < m_populationSize; i++)
+            {
+                toRet.push_back(std::make_pair(m_population[i], m_minCostPerAgent[i]));
+            }
+
+            return toRet;
+        }
+
         void PrintPopulation() const
         {
             for (auto agent : m_population)
@@ -274,6 +287,23 @@ namespace de
                 {
                     m_callback(*this);
                 }
+
+                if (m_terminationCondition)
+                {
+                    if (m_terminationCondition(*this))
+                    {
+                        if (verbose)
+                        {
+                            std::cout << "Terminated due to positive evaluation of the termination condition." << std::endl;
+                        }
+                        return;
+                    }
+                }
+            }
+
+            if (verbose)
+            {
+                std::cout << "Terminated due to exceeding total number of generations." << std::endl;
             }
         }
 
@@ -301,6 +331,7 @@ namespace de
         bool m_shouldCheckConstraints;
 
         std::function<void(const DifferentialEvolution&)> m_callback;
+        std::function<bool(const DifferentialEvolution&)> m_terminationCondition;
 
         std::default_random_engine m_generator;
         std::vector<std::vector<double>> m_population;
